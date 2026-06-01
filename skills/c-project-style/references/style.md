@@ -544,6 +544,18 @@ When an object may still be referenced in the current callback chain, defer its 
 
 Use leveled log macros: `<project>_logd` (debug), `<project>_logi` (info), `<project>_logw` (warning), `<project>_loge` (error). Log messages include relevant context identifiers.
 
+Log messages must be short and factual. Use format-string style with key values, not full sentences:
+
+```c
+/* Correct */
+<project>_loge("send failed fd=%d err=%d", fd, err);
+<project>_logi("conn accepted remote=%s:%d", ip, port);
+
+/* Wrong -- verbose, sentence-style */
+<project>_loge("The send operation has failed on fd %d with error %d.", fd, err);
+<project>_logi("A new connection has been accepted from %s port %d.", ip, port);
+```
+
 ## 18. Restricted Functions
 
 Applies to all `.c` and `.h` files in the project (including tests).
