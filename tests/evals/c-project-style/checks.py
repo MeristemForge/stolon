@@ -212,6 +212,46 @@ def check_recommends_snprintf(text: str) -> bool:
     return "snprintf" in text
 
 
+# --- Logging ---
+
+
+@text_check
+def check_log_uses_module_tag(text: str) -> bool:
+    """Log message must start with the module name as an angle-bracket tag."""
+    return bool(re.search(r'"<udp>', text)) or bool(re.search(r"<udp>", text))
+
+
+@text_check
+def check_log_uses_loge(text: str) -> bool:
+    """Error logs use the loge (error) level, not logd/logi/logw."""
+    return bool(re.search(r"\b\w*_?loge\b", text))
+
+
+@text_check
+def check_log_is_key_value_style(text: str) -> bool:
+    """Log messages use key=value pairs (e.g. port=%d), not prose."""
+    return bool(re.search(r"\w+=%[diuxsp]", text))
+
+
+@text_check
+def check_log_not_sentence_style(text: str) -> bool:
+    """Log message inside loge() must not be a verbose sentence.
+
+    Heuristic: the format string should be short and not contain
+    sentence-like phrasing ("has failed", "the ", trailing period).
+    """
+    matches = re.findall(r'_?loge\(\s*"([^"]*)"', text)
+    if not matches:
+        return False
+    for fmt in matches:
+        lower = fmt.lower()
+        if " the " in lower or " has " in lower or " a new " in lower:
+            return False
+        if fmt.rstrip().endswith("."):
+            return False
+    return True
+
+
 # --- Comment style ---
 
 

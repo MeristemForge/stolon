@@ -91,13 +91,13 @@ def main():
                         continue
 
                 if result:
-                    print(f"    \u2713 {check_name}")
+                    print(f"    [PASS] {check_name}")
                     passed += 1
                 else:
-                    print(f"    \u2717 {check_name}")
+                    print(f"    [FAIL] {check_name}")
                     failed += 1
             except Exception as e:
-                print(f"    \u2717 {check_name} (error: {e})")
+                print(f"    [FAIL] {check_name} (error: {e})")
                 failed += 1
 
     print(f"\n===============================")

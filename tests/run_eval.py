@@ -87,13 +87,13 @@ def run_skill_eval(skill_name: str, output_dir: Path) -> tuple[int, int, int]:
                         continue
 
                 if result:
-                    print(f"    ✓ {check_name}")
+                    print(f"    [PASS] {check_name}")
                     passed += 1
                 else:
-                    print(f"    ✗ {check_name}")
+                    print(f"    [FAIL] {check_name}")
                     failed += 1
             except Exception as e:
-                print(f"    ✗ {check_name} (error: {e})")
+                print(f"    [FAIL] {check_name} (error: {e})")
                 failed += 1
 
     return passed, failed, skipped
@@ -114,7 +114,7 @@ def main():
     total_pass = total_fail = total_skip = 0
 
     for skill in skills:
-        print(f"\n═══ Skill: {skill} ═══")
+        print(f"\n=== Skill: {skill} ===")
 
         if custom_output:
             out_dir = Path(custom_output)

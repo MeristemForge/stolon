@@ -1,0 +1,7 @@
+In xylem, only errors are logged in project code, and the message must start with the module name as an angle-bracket tag, stay short, and use `key=value` pairs rather than a sentence. For a failed `bind` in the udp module:
+
+```c
+xylem_loge("<udp> bind failed port=%d err=%d", port, err);
+```
+
+The `<udp>` tag identifies the module, `xylem_loge` is the error-level logger (do not add `logd`/`logi`/`logw` on your own initiative), and `port=%d err=%d` keeps the values greppable. Avoid verbose, sentence-style messages like "The bind operation has failed on port %d." -- they are harder to scan and grep.

@@ -36,10 +36,10 @@ class SmokeResult:
     def check(self, name: str, condition: bool, detail: str = ""):
         if condition:
             self.passed.append(name)
-            print(f"    \u2713 {name}")
+            print(f"    [PASS] {name}")
         else:
             self.failed.append(name)
-            msg = f"    \u2717 {name}"
+            msg = f"    [FAIL] {name}"
             if detail:
                 msg += f" ({detail})"
             print(msg)

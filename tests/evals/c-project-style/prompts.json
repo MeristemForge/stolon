@@ -72,6 +72,17 @@
     ]
   },
   {
+    "id": "logging_module_tag",
+    "prompt": "How should I format an error log message for a failed bind in the xylem udp module?",
+    "skill_ref": "style.md",
+    "expected_checks": [
+      "log_uses_module_tag",
+      "log_uses_loge",
+      "log_is_key_value_style",
+      "log_not_sentence_style"
+    ]
+  },
+  {
     "id": "comment_style",
     "prompt": "What comment style should I use in xylem .c files?",
     "skill_ref": "style.md",
