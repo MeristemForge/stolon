@@ -27,7 +27,7 @@ After writing or editing ANY `.c` or `.h` file, you MUST check every modified/ad
 | # | Rule | What to check |
 |---|------|---------------|
 | 1 | **Naming §7** | Public: `<project>_<module>_<action>`. Static: `_<module>_<action>`. Callbacks: `_<module>_<subject>_<event>_cb`. Types: `_t` suffix. Enums: `_e` tag, `_t` typedef, `UPPER` values. |
-| 2 | **Comments §14** | ASCII only (no `//`, no unicode). Single-line: `/* why */`. Multi-line: `/** ... */` (opening/closing on own lines). All `.h` declarations: `/** @brief ... */`. Concise — only explain WHY, delete any comment that restates the code or adds no information. Struct fields: trailing `/*< ... */`. No decorative dividers. |
+| 2 | **Comments §14** | ASCII only (no `//`, no unicode). Single-line: `/* why */`. Multi-line: `/** ... */` (opening/closing on own lines). Doxygen `/** @brief ... */` ONLY for function declarations — types, typedefs, enums, structs, macros do NOT use Doxygen. Struct/enum fields: short → trailing `/* ... */`, long → `/** ... */` block above the field. Concise — only explain WHY; delete any comment that restates the code or adds no information. No decorative dividers. |
 | 3 | **Include order §5** | Own public header → other project headers → internal headers → third-party → stdlib. Blank line between groups. |
 | 4 | **Types §8** | Fixed-width (`uint32_t` etc.) for struct fields and data. `size_t` for sizes. `int` only for returns/loops/flags. `PRIu64`/`%zu` for printf. |
 | 5 | **Formatting §13** | Braces on ALL `if`/`else`/`for`/`while` bodies. `*` attaches to type (`int* p`). K&R brace style. One param per line when they don't fit. |
@@ -40,4 +40,5 @@ After writing or editing ANY `.c` or `.h` file, you MUST check every modified/ad
 | 12 | **Header guard §3** | `_Pragma("once")` only. No `#ifndef`/`#define` guards. |
 | 13 | **Unused params §15** | `(void)param;` at top of function body. |
 | 14 | **Platform §12** | No `#ifdef _WIN32` / `#ifdef __linux__` outside `src/platform/`. |
+| 15 | **Logging §17.2** | Project code logs errors only via `<project>_loge`. No self-initiated `logd`/`logi`/`logw`. Each message starts with the module identifier, short and factual. Remove any temporary debug logs. |
 

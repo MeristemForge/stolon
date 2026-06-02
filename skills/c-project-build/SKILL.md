@@ -37,3 +37,4 @@ After ANY build or test command, you MUST check the following. Do NOT report suc
 | 4 | **Sanitizer output** | If ASAN/TSAN/UBSAN enabled, check for ANY sanitizer report in output. A "passing" test with sanitizer errors is NOT passing. |
 | 5 | **compile_commands.json** | After configure/build, copy to project root if missing or stale. |
 | 6 | **vcenv.cmd (Windows)** | On Windows, verify all cmake/ctest commands ran through `out/vcenv.cmd`. |
+| 7 | **MSVC compiler (Windows)** | On Windows, every configure MUST pass `-DCMAKE_C_COMPILER=cl`. Activating the VS env does not stop CMake from picking gcc/clang off PATH. Check configure output shows `The C compiler identification is MSVC`. |

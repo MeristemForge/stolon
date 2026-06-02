@@ -389,6 +389,8 @@ All `.c` and `.h` files (including tests) must contain only ASCII characters (by
 
 ### 14.2 Function Declarations (Header Files)
 
+Doxygen blocks are **only** for function declarations. Types, typedefs, enums, structs, and macros do NOT get Doxygen-style comments (use plain `/* ... */` or `/** ... */` where a comment is genuinely needed).
+
 All `extern` function declarations in `.h` files -- both public API headers (`include/`) and internal headers (`src/`) -- must have a Doxygen `/** ... */` block:
 
 ```c
@@ -411,6 +413,7 @@ Rules:
 - Align `@param` descriptions
 - Pure ASCII only
 - Blank comment lines between sections
+- Keep it concise. Only document what is not obvious from the signature.
 
 ### 14.3 Internal / Static Functions
 
@@ -441,19 +444,34 @@ uint8_t buf[len + 1];
 
 ### 14.5 Struct Field and Enum Value Comments
 
-Trailing `/*< ... */` for inline field/value documentation in public headers:
+Struct/enum members are not functions, so no Doxygen tags. Keep field documentation concise.
+
+Short descriptions use a trailing `/* ... */` on the same line as the field:
 
 ```c
 typedef struct <project>_opts_s {
-    int      mtu;           /*< MTU size, 0 for default (1400). */
-    bool     stream;        /*< true: byte-stream mode. */
-    uint64_t timeout_ms;    /*< Timeout in ms, 0 to disable. */
+    int      mtu;           /* MTU size, 0 for default (1400). */
+    bool     stream;        /* true: byte-stream mode. */
+    uint64_t timeout_ms;    /* Timeout in ms, 0 to disable. */
 } <project>_opts_t;
 
 typedef enum <project>_foo_type_e {
-    <PROJECT>_FOO_NONE,   /*< No action. */
-    <PROJECT>_FOO_READ,   /*< Read operation. */
+    <PROJECT>_FOO_NONE,   /* No action. */
+    <PROJECT>_FOO_READ,   /* Read operation. */
 } <project>_foo_type_t;
+```
+
+When a field needs a longer explanation that does not fit on one line, use a `/** ... */` block (opening/closing on their own lines) placed directly above the field:
+
+```c
+typedef struct <project>_opts_s {
+    /**
+     * Receive window in bytes. Must be a power of two. When 0, the
+     * module picks a value based on the negotiated MTU.
+     */
+    uint32_t recv_window;
+    bool     stream;        /* true: byte-stream mode. */
+} <project>_opts_t;
 ```
 
 ## 15. Unused Parameters
@@ -542,16 +560,16 @@ When an object may still be referenced in the current callback chain, defer its 
 
 ### 17.2 Logging
 
-Use leveled log macros: `<project>_logd` (debug), `<project>_logi` (info), `<project>_logw` (warning), `<project>_loge` (error). Log messages include relevant context identifiers.
+In project code, only log errors, and only where a log is genuinely necessary. Use `<project>_loge` (error). Do NOT add `logd`/`logi`/`logw` calls on your own initiative — only add them if the user explicitly asks. (Temporary debug logging while you are debugging is fine, but remove it before the code is final.)
 
-Log messages must be short and factual. Use format-string style with key values, not full sentences:
+Every log message must start with the current module's identifier, stay short and factual, and use format-string style with key values rather than full sentences:
 
 ```c
 /* Correct */
-<project>_loge("send failed fd=%d err=%d", fd, err);
-<project>_logi("conn accepted remote=%s:%d", ip, port);
+<project>_loge("tcp: send failed fd=%d err=%d", fd, err);
+<project>_loge("udp: bind failed port=%d err=%d", port, err);
 
-/* Wrong -- verbose, sentence-style */
+/* Wrong -- no module tag, verbose, sentence-style */
 <project>_loge("The send operation has failed on fd %d with error %d.", fd, err);
 <project>_logi("A new connection has been accepted from %s port %d.", ip, port);
 ```

@@ -104,6 +104,18 @@ Example (PowerShell):
 
 The exit code comes directly from cmake/ctest — no spurious -1 issue.
 
+**Step 4 — Force the MSVC compiler explicitly:**
+
+Activating the VS environment puts `cl.exe` on PATH, but it does NOT make CMake prefer it. With the Ninja generator, CMake scans PATH and may pick up gcc/clang (e.g. MinGW, LLVM, MSYS2) *before* `cl.exe`. The result: a build that silently uses the wrong compiler.
+
+To guarantee MSVC, **always** pass the compiler explicitly on the configure line:
+
+```
+-DCMAKE_C_COMPILER=cl
+```
+
+This must be present on every Windows `cmake -B` (configure) command — standard build, sanitizers, and coverage. Without it, the only thing controlling compiler choice is PATH ordering, which is unreliable.
+
 ## compile_commands.json
 
 After every successful configure or build, copy `compile_commands.json` from the build directory to the project root so clangd can find it:
@@ -143,11 +155,11 @@ Use `out/vcenv.cmd` as described in **Windows MSVC Environment Activation**:
 
 ```bash
 # bash
-cmd //c "out\\vcenv.cmd cmake -B out -G \"Ninja Multi-Config\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [-D{NAME}_ENABLE_TESTING=ON] [-D{NAME}_ENABLE_{FEATURE}=ON]"
+cmd //c "out\\vcenv.cmd cmake -B out -G \"Ninja Multi-Config\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=cl [-D{NAME}_ENABLE_TESTING=ON] [-D{NAME}_ENABLE_{FEATURE}=ON]"
 ```
 ```powershell
 # PowerShell
-& cmd /c "out\vcenv.cmd cmake -B out -G `"Ninja Multi-Config`" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [-D{NAME}_ENABLE_TESTING=ON] [-D{NAME}_ENABLE_{FEATURE}=ON]"
+& cmd /c "out\vcenv.cmd cmake -B out -G `"Ninja Multi-Config`" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=cl [-D{NAME}_ENABLE_TESTING=ON] [-D{NAME}_ENABLE_{FEATURE}=ON]"
 ```
 
 ### Build
@@ -234,13 +246,13 @@ Windows (via `out/vcenv.cmd`):
 
 ```bash
 # bash
-cmd //c "out\\vcenv.cmd cmake -B out -G \"Ninja Multi-Config\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_ASAN=ON"
+cmd //c "out\\vcenv.cmd cmake -B out -G \"Ninja Multi-Config\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=cl -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_ASAN=ON"
 cmd //c "out\\vcenv.cmd cmake --build out --config Debug -j {ncpu}"
 cmd //c "out\\vcenv.cmd ctest --test-dir out -C Debug --output-on-failure"
 ```
 ```powershell
 # PowerShell
-& cmd /c "out\vcenv.cmd cmake -B out -G `"Ninja Multi-Config`" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_ASAN=ON"
+& cmd /c "out\vcenv.cmd cmake -B out -G `"Ninja Multi-Config`" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=cl -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_ASAN=ON"
 & cmd /c "out\vcenv.cmd cmake --build out --config Debug -j {ncpu}"
 & cmd /c "out\vcenv.cmd ctest --test-dir out -C Debug --output-on-failure"
 ```
@@ -274,13 +286,13 @@ Windows coverage uses OpenCppCoverage (runtime instrumentation, no compiler flag
 
 ```bash
 # bash
-cmd //c "out\\vcenv.cmd cmake -B out -G \"Ninja Multi-Config\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_COVERAGE=ON"
+cmd //c "out\\vcenv.cmd cmake -B out -G \"Ninja Multi-Config\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=cl -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_COVERAGE=ON"
 cmd //c "out\\vcenv.cmd cmake --build out --config Debug -j 8"
 cmd //c "out\\vcenv.cmd cmake --build out --config Debug --target coverage"
 ```
 ```powershell
 # PowerShell
-& cmd /c "out\vcenv.cmd cmake -B out -G `"Ninja Multi-Config`" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_COVERAGE=ON"
+& cmd /c "out\vcenv.cmd cmake -B out -G `"Ninja Multi-Config`" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_C_COMPILER=cl -D{NAME}_ENABLE_TESTING=ON -D{NAME}_ENABLE_COVERAGE=ON"
 & cmd /c "out\vcenv.cmd cmake --build out --config Debug -j 8"
 & cmd /c "out\vcenv.cmd cmake --build out --config Debug --target coverage"
 ```
