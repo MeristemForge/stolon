@@ -33,6 +33,56 @@ Sanitizer and coverage are **not** part of the standard checks. Only ask about t
 
 **Exception:** These checks do NOT apply during iterative fix cycles (rebuild-only, re-run tests, or fix→rebuild→test loops). See the skip-confirmation rules in SKILL.md.
 
+## Toolchain & Dependency Versions — Resolve BEFORE Configuring
+
+Many systems carry more than one version of cmake, OpenSSL, the compiler, etc. If you let CMake pick whatever is first on PATH and only react when the build breaks, you waste time and tokens chasing the wrong toolchain. Resolve versions up front, in this order — do NOT build first and debug the version later.
+
+**Step 1 — Read the project's required versions.** Before configuring, collect every version constraint the project declares:
+
+| Source | What to look for |
+|--------|------------------|
+| Root `CMakeLists.txt` | `cmake_minimum_required(VERSION ...)`; `find_package(<Pkg> <ver> ...)`; pinned `*_VERSION` variables |
+| `README` / `docs/build.md` | Documented required versions (cmake, OpenSSL, compiler, etc.) |
+| Steering / project docs | Any pinned toolchain or dependency versions |
+
+If the project pins no version for a tool, the system default is acceptable — skip to configure.
+
+**Step 2 — Find the required version on the system FIRST.** For each constraint, locate a matching install *before* running cmake. Enumerate ALL installs, not just the first on PATH:
+
+| Tool | Enumerate installs | Check version |
+|------|--------------------|---------------|
+| cmake | `where cmake` (Windows) / `which -a cmake` (Unix) | `<path> --version` |
+| OpenSSL | `where openssl` / `which -a openssl`; common roots: `C:\Program Files\OpenSSL-Win64`, `/usr/local/opt/openssl`, `/opt/homebrew/opt/openssl` | `<path> version` |
+| Compiler | `cl` (MSVC), `gcc --version`, `clang --version` | parse output |
+
+Compare each install against the project's constraint.
+
+**Step 3 — Found → point CMake at it explicitly.** Use the matching install directly instead of relying on PATH order:
+
+| Tool | How to pin |
+|------|------------|
+| cmake | Invoke the matching binary by full path: `"C:\path\to\cmake.exe" -B out ...` |
+| OpenSSL | `-DOPENSSL_ROOT_DIR=<install root>` on the configure line |
+| Other `find_package` deps | `-D<Pkg>_ROOT=<install root>` (CMake ≥ 3.12) or the package's documented hint variable |
+| C compiler | `-DCMAKE_C_COMPILER=<path>` (Windows MSVC always `cl` — see Windows MSVC Environment Activation) |
+
+**Step 4 — Not found → STOP and ask.** If no install matches the required version, do NOT fall back to the default and do NOT configure-then-fail. Tell the user: the project requires version X, you found versions Y/Z (or none), and ask whether the required version exists elsewhere on the system, or whether they want help installing it. Wait for the answer before building.
+
+## Default Compiler by Platform
+
+Unless the user asks for a specific compiler, use the platform default. Do NOT switch compilers on your own initiative.
+
+| Platform | Default compiler | Configure flag |
+|----------|------------------|----------------|
+| Windows | MSVC (`cl`) | `-DCMAKE_C_COMPILER=cl` (see Windows MSVC Environment Activation) |
+| Linux | GCC (`gcc`) | `-DCMAKE_C_COMPILER=gcc` |
+| macOS | Clang (`clang`) | `-DCMAKE_C_COMPILER=clang` |
+| Android / iOS | Clang (`clang`) | toolchain-provided clang (NDK / Xcode) |
+
+**If the user requests a different compiler** (e.g. clang on Linux, MinGW gcc on Windows), use the one they ask for: pass `-DCMAKE_C_COMPILER=<their choice>` on the configure line. The user's explicit choice always wins over the platform default.
+
+On Windows specifically, passing `-DCMAKE_C_COMPILER=cl` is mandatory even though MSVC is the default — activating the VS environment is not enough to stop CMake from picking gcc/clang off PATH. See **Windows MSVC Environment Activation, Step 4**.
+
 ## Build Type
 
 | Build type | `--config` value | Use case |
@@ -143,8 +193,11 @@ if (Test-Path out) { Remove-Item -Recurse -Force out }   # Windows (PowerShell)
 
 #### Unix (Linux / macOS)
 
+Default compiler: `gcc` on Linux, `clang` on macOS (override only if the user asked for a different one):
+
 ```bash
 cmake -B out -G "Ninja Multi-Config" \
+  -DCMAKE_C_COMPILER=gcc \
   [-D{NAME}_ENABLE_TESTING=ON] \
   [-D{NAME}_ENABLE_{FEATURE}=ON]
 ```

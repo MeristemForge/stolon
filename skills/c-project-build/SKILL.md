@@ -17,7 +17,11 @@ code style review → c-project-style, scaffolding → c-project-init, committin
 
 Read `references/build.md` in this skill's base directory. If not found, STOP and tell the user.
 
-Follow the **Inputs — MANDATORY Checks Before Build** section in `build.md` before running any cmake command. No exceptions.
+Before any cmake command, follow the **Inputs — MANDATORY Checks Before Build** section in `build.md`. No exceptions.
+
+If the project pins toolchain/dependency versions (cmake, OpenSSL, compiler), resolve them FIRST per **Toolchain & Dependency Versions** in `build.md`: find the required version, pin CMake to it, ask the user if missing. Never build with the default and debug the version after it fails.
+
+Use the platform-default compiler unless the user asks otherwise (Windows → MSVC `cl`, Linux → `gcc`, macOS/Android/iOS → `clang`); see **Default Compiler by Platform** in `build.md`.
 
 **Skip confirmation when:**
 
@@ -37,4 +41,5 @@ After ANY build or test command, you MUST check the following. Do NOT report suc
 | 4 | **Sanitizer output** | If ASAN/TSAN/UBSAN enabled, check for ANY sanitizer report in output. A "passing" test with sanitizer errors is NOT passing. |
 | 5 | **compile_commands.json** | After configure/build, copy to project root if missing or stale. |
 | 6 | **vcenv.cmd (Windows)** | On Windows, verify all cmake/ctest commands ran through `out/vcenv.cmd`. |
-| 7 | **MSVC compiler (Windows)** | On Windows, every configure MUST pass `-DCMAKE_C_COMPILER=cl`. Activating the VS env does not stop CMake from picking gcc/clang off PATH. Check configure output shows `The C compiler identification is MSVC`. |
+| 7 | **Correct compiler** | Configure used the platform-default compiler (or the user's choice). Windows: every configure MUST pass `-DCMAKE_C_COMPILER=cl` (VS env alone won't stop CMake picking gcc/clang off PATH); confirm output shows `MSVC`. Linux/macOS: confirm identification matches the intended GCC/Clang. |
+| 8 | **Correct toolchain/dep versions** | If the project pins versions, confirm configure output (e.g. `Found OpenSSL: ... (found version ...)`) matches the constraint, not whatever was first on PATH. |
