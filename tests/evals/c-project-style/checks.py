@@ -391,3 +391,166 @@ def check_explains_pragma_reason(text: str) -> bool:
         and ("instead" in lower or "not" in lower or "use" in lower
              or "project" in lower or "convention" in lower)
     )
+
+
+# --- Codegen checks ---------------------------------------------------------
+# These verify the *generated code* in the agent's response, not whether it
+# can recite a rule. They extract fenced ```c code blocks and inspect them,
+# reusing the deterministic scanner from tests/lint_c.py so that // inside a
+# string or a banned name inside a comment is not a false positive.
+
+import sys as _sys
+from pathlib import Path as _Path
+
+_LINT_DIR = _Path(__file__).resolve().parents[2]
+if str(_LINT_DIR) not in _sys.path:
+    _sys.path.insert(0, str(_LINT_DIR))
+
+try:
+    from lint_c import classify as _classify, CODE as _CODE, LINE_COMMENT as _LINE_COMMENT
+except Exception:  # pragma: no cover - fallback if import path differs
+    _classify = None
+    _CODE = "code"
+    _LINE_COMMENT = "line_comment"
+
+
+def _code_blocks(text: str) -> str:
+    """Concatenate all fenced ```c / ```cpp code blocks in the response."""
+    blocks = re.findall(r"```(?:c|cpp|C)?\s*\n(.*?)```", text, re.DOTALL)
+    return "\n".join(blocks)
+
+
+def _states(code: str):
+    if _classify is not None:
+        return _classify(code)
+    return [_CODE] * len(code)
+
+
+@text_check
+def check_codegen_no_cpp_comments(text: str) -> bool:
+    """Generated code must not contain // line comments (outside strings)."""
+    code = _code_blocks(text)
+    if not code:
+        return False
+    states = _states(code)
+    for i in range(len(code) - 1):
+        if code[i] == "/" and code[i + 1] == "/" and states[i] == _LINE_COMMENT:
+            return False
+    return True
+
+
+@text_check
+def check_codegen_ascii_only(text: str) -> bool:
+    """Generated code must be ASCII only."""
+    code = _code_blocks(text)
+    if not code:
+        return False
+    return all(ord(c) <= 0x7F for c in code)
+
+
+@text_check
+def check_codegen_no_banned_functions(text: str) -> bool:
+    """Generated code must not call banned functions (in code, not comments)."""
+    code = _code_blocks(text)
+    if not code:
+        return False
+    states = _states(code)
+    banned = ("sprintf", "strcpy", "strcat", "gets", "atoi", "atof", "atol",
+              "strtok", "strerror", "localtime", "gmtime")
+    for fn in banned:
+        for m in re.finditer(r"\b" + re.escape(fn) + r"\s*\(", code):
+            if states[m.start()] == _CODE:
+                return False
+    return True
+
+
+@text_check
+def check_codegen_uses_snprintf(text: str) -> bool:
+    """String-formatting codegen should use snprintf."""
+    code = _code_blocks(text)
+    return "snprintf" in code
+
+
+@text_check
+def check_codegen_header_has_pragma_once(text: str) -> bool:
+    """Generated header must use _Pragma("once")."""
+    code = _code_blocks(text)
+    return '_Pragma("once")' in code
+
+
+@text_check
+def check_codegen_no_ifndef_guard(text: str) -> bool:
+    """Generated header must not use #ifndef/#define include guards."""
+    code = _code_blocks(text)
+    if not code:
+        return False
+    has_ifndef = bool(re.search(r"^\s*#\s*ifndef\b", code, re.MULTILINE))
+    has_define = bool(re.search(r"^\s*#\s*define\b", code, re.MULTILINE))
+    return not (has_ifndef and has_define) and "#pragma once" not in code
+
+
+@text_check
+def check_codegen_has_license_header(text: str) -> bool:
+    """Generated file should start with a /** ... */ block comment."""
+    code = _code_blocks(text)
+    return code.lstrip().startswith("/*")
+
+
+@text_check
+def check_codegen_extern_on_decls(text: str) -> bool:
+    """Function declarations in a generated header use the extern keyword."""
+    code = _code_blocks(text)
+    return "extern " in code
+
+
+@text_check
+def check_codegen_opaque_typedef(text: str) -> bool:
+    """Opaque type declared as forward-struct typedef in the header."""
+    code = _code_blocks(text)
+    return bool(re.search(r"typedef\s+struct\s+\w+_s\s+\w+_t\s*;", code))
+
+
+@text_check
+def check_codegen_log_has_module_tag(text: str) -> bool:
+    """Error logs in generated code start with an angle-bracket module tag."""
+    code = _code_blocks(text)
+    matches = re.findall(r"_?loge\(\s*\"([^\"]*)\"", code)
+    if not matches:
+        return False
+    return all(re.match(r"\s*<\w+>", fmt) for fmt in matches)
+
+
+@text_check
+def check_codegen_log_uses_loge(text: str) -> bool:
+    """Generated code uses loge (error) level, not logd/logi/logw."""
+    code = _code_blocks(text)
+    return bool(re.search(r"\b\w*_?loge\b", code))
+
+
+@text_check
+def check_codegen_braces_on_if(text: str) -> bool:
+    """Every if in generated code uses braces (no single-statement ifs)."""
+    code = _code_blocks(text)
+    if not code:
+        return False
+    states = _states(code)
+    for m in re.finditer(r"\bif\s*\(", code):
+        if states[m.start()] != _CODE:
+            continue
+        # Walk past the balanced condition parentheses.
+        i = m.end() - 1
+        depth = 0
+        while i < len(code):
+            if states[i] == _CODE and code[i] == "(":
+                depth += 1
+            elif states[i] == _CODE and code[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+            i += 1
+        j = i + 1
+        while j < len(code) and code[j] in " \t\r\n":
+            j += 1
+        if j < len(code) and code[j] != "{":
+            return False
+    return True

@@ -1,0 +1,59 @@
+Here is the `include/xylem/xylem-dns.h` public header following xylem conventions:
+
+```c
+/** Copyright (c) 2026-2036, Jin.Wu <wujin.developer@gmail.com>
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the "Software"), to
+ *  deal in the Software without restriction, including without limitation the
+ *  rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ *  sell copies of the Software, and to permit persons to whom the Software is
+ *  furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in
+ *  all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ *  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ *  IN THE SOFTWARE.
+ */
+
+_Pragma("once")
+
+#include "xylem/xylem.h"
+
+#include <stdint.h>
+
+/* Opaque DNS resolver handle. Allocated via xylem_dns_create. */
+typedef struct xylem_dns_s xylem_dns_t;
+
+/**
+ * @brief Create a DNS resolver.
+ *
+ * @return New resolver, or NULL on allocation failure.
+ */
+extern xylem_dns_t* xylem_dns_create(void);
+
+/**
+ * @brief Destroy a DNS resolver. Safe to call with NULL.
+ *
+ * @param dns  Resolver to destroy.
+ */
+extern void xylem_dns_destroy(xylem_dns_t* dns);
+
+/**
+ * @brief Resolve a hostname to an address.
+ *
+ * @param dns   Resolver handle.
+ * @param host  Hostname to resolve.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+extern int xylem_dns_resolve(xylem_dns_t* dns, const char* host);
+```
+
+Notes on the conventions applied: the file opens with the LICENSE block, uses `_Pragma("once")` instead of `#ifndef` guards, declares the type opaquely as a forward-struct typedef (`typedef struct xylem_dns_s xylem_dns_t;`), marks every declaration `extern`, and uses `/* */` and Doxygen `/** */` comments only -- no `//` comments, ASCII only.

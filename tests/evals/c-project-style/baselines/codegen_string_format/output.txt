@@ -1,0 +1,20 @@
+Here is a small helper that formats `host:port` into a caller-provided buffer:
+
+```c
+/**
+ * Format "host:port" into buf. Returns the number of bytes written
+ * (excluding the NUL), or -1 if the buffer is too small.
+ */
+static int _addr_format(char* buf, size_t buflen, const char* host, uint16_t port) {
+    if (buf == NULL || host == NULL) {
+        return -1;
+    }
+    int n = snprintf(buf, buflen, "%s:%u", host, (unsigned)port);
+    if (n < 0 || (size_t)n >= buflen) {
+        return -1;
+    }
+    return n;
+}
+```
+
+Conventions applied: it uses `snprintf` (never the banned `sprintf`/`strcpy`/`strcat`), bounds-checks the result against `buflen`, uses `size_t` for sizes and a fixed-width `uint16_t` for the port, follows the `0`/`-1` (here byte-count/`-1`) return convention, braces every `if`, and contains no `//` comments and no non-ASCII characters.

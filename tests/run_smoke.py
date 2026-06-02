@@ -17,6 +17,7 @@ Usage:
 
 import argparse
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -322,6 +323,70 @@ def smoke_commit_format() -> SmokeResult:
 
 
 # ============================================================
+# Smoke test: deterministic linter on generated code
+# ============================================================
+
+def smoke_lint_generated() -> SmokeResult:
+    """Run the deterministic C linter against generated baseline code.
+
+    This is the hard gate: real .c/.h files from the init scaffold and the
+    style codegen baselines must pass lint_c.py with zero violations.
+    """
+    import importlib.util
+
+    result = SmokeResult("lint_generated")
+    print(f"\n  --- {result.name} ---")
+
+    lint_path = TESTS_DIR / "lint_c.py"
+    if not lint_path.exists():
+        result.check("linter_exists", False, "lint_c.py not found")
+        return result
+    result.check("linter_exists", True)
+
+    spec = importlib.util.spec_from_file_location("lint_c", lint_path)
+    lint_c = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(lint_c)
+
+    # 1. init scaffolds must be lint-clean.
+    init_baselines = TESTS_DIR / "evals" / "c-project-init" / "baselines"
+    for proj in sorted(init_baselines.glob("*/project")):
+        violations = lint_c.lint_paths([proj], proj)
+        result.check(
+            f"init_{proj.parent.name}_clean",
+            not violations,
+            f"{len(violations)} violation(s)" if violations else "",
+        )
+
+    # 2. style codegen baselines: extract code blocks and lint them.
+    style_baselines = TESTS_DIR / "evals" / "c-project-style" / "baselines"
+    code_re = re.compile(r"```(?:c|cpp|C)?\s*\n(.*?)```", re.DOTALL)
+    for out_file in sorted(style_baselines.glob("codegen_*/output.txt")):
+        text = out_file.read_text(encoding="utf-8")
+        blocks = code_re.findall(text)
+        code = "\n".join(blocks)
+        if not code.strip():
+            result.check(f"{out_file.parent.name}_has_code", False, "no code block")
+            continue
+        # Lint the extracted code as a synthetic .c (header rules need .h).
+        suffix = ".h" if "_Pragma" in code or "header" in out_file.parent.name else ".c"
+        tmp = Path(tempfile.gettempdir()) / f"stolon_codegen{suffix}"
+        tmp.write_text(code, encoding="utf-8")
+        violations = lint_c.lint_paths([tmp])
+        # Codegen snippets are partial (no license header by design for .c
+        # impl snippets), so only fail on the hard mechanical rules.
+        hard = [v for v in violations if v.rule in
+                ("cpp-comment", "ascii-only", "banned-function")]
+        result.check(
+            f"{out_file.parent.name}_clean",
+            not hard,
+            "; ".join(str(v) for v in hard) if hard else "",
+        )
+        tmp.unlink(missing_ok=True)
+
+    return result
+
+
+# ============================================================
 # Main
 # ============================================================
 
@@ -329,6 +394,7 @@ SMOKE_TESTS = {
     "init": [smoke_init_build_chain, smoke_style_compliance],
     "build": [smoke_build_sanitizer],
     "commit": [smoke_commit_format],
+    "lint": [smoke_lint_generated],
 }
 
 

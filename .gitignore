@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# Live eval agent outputs (transient, written by run_eval.py --live)
+tests/.live_out/

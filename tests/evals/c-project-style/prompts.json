@@ -141,5 +141,46 @@
       "rejects_pragma_once_raw",
       "explains_pragma_reason"
     ]
+  },
+  {
+    "id": "codegen_header_module",
+    "prompt": "Write the complete xylem-dns.h public header for a new single-file 'dns' module in the xylem project. It should declare one opaque type xylem_dns_t and a create/destroy pair plus a xylem_dns_resolve function.",
+    "skill_ref": "style.md",
+    "is_codegen": true,
+    "expected_checks": [
+      "codegen_header_has_pragma_once",
+      "codegen_no_ifndef_guard",
+      "codegen_no_cpp_comments",
+      "codegen_ascii_only",
+      "codegen_has_license_header",
+      "codegen_extern_on_decls",
+      "codegen_opaque_typedef"
+    ]
+  },
+  {
+    "id": "codegen_impl_with_logging",
+    "prompt": "Write a xylem udp module function _udp_bind that binds a socket to a port and logs an error on failure. Show the function body in C following xylem conventions.",
+    "skill_ref": "style.md",
+    "is_codegen": true,
+    "expected_checks": [
+      "codegen_no_cpp_comments",
+      "codegen_ascii_only",
+      "codegen_log_has_module_tag",
+      "codegen_log_uses_loge",
+      "codegen_no_banned_functions",
+      "codegen_braces_on_if"
+    ]
+  },
+  {
+    "id": "codegen_string_format",
+    "prompt": "Write a small xylem helper function that formats a 'host:port' string into a caller-provided buffer. Show the C code following xylem conventions.",
+    "skill_ref": "style.md",
+    "is_codegen": true,
+    "expected_checks": [
+      "codegen_no_banned_functions",
+      "codegen_uses_snprintf",
+      "codegen_no_cpp_comments",
+      "codegen_ascii_only"
+    ]
   }
 ]
