@@ -439,33 +439,62 @@ def smoke_lint_generated() -> SmokeResult:
 # Main
 # ============================================================
 
+# Categories that run entirely on in-tree baselines (no external project).
 SMOKE_TESTS = {
     "init": [smoke_init_build_chain, smoke_style_compliance],
-    "build": [smoke_build_sanitizer],
     "commit": [smoke_commit_format],
     "lint": [smoke_lint_generated],
+}
+
+# Categories that REQUIRE a real external C project (--project or
+# STOLON_SMOKE_PROJECT). Excluded from a default full run unless a project is
+# configured, so the default run stays clean instead of always reporting a
+# confusing permanent skip.
+EXTERNAL_SMOKE_TESTS = {
+    "build": [smoke_build_sanitizer],
 }
 
 
 def main():
     parser = argparse.ArgumentParser(description="Live smoke tests for stolon skills")
-    parser.add_argument("category", nargs="?", help="Test category (init/build/commit)")
+    all_categories = sorted(set(SMOKE_TESTS) | set(EXTERNAL_SMOKE_TESTS))
+    parser.add_argument(
+        "category",
+        nargs="?",
+        help=f"Test category ({', '.join(all_categories)})",
+    )
     parser.add_argument(
         "--project",
         type=Path,
         help="Path to a real C project for build/sanitizer smoke tests "
-             "(or set STOLON_SMOKE_PROJECT). Skipped when not provided.",
+             "(or set STOLON_SMOKE_PROJECT). Required for the 'build' category.",
     )
     args = parser.parse_args()
 
+    has_project = find_external_project(args.project) is not None
+
     if args.category:
-        categories = {args.category: SMOKE_TESTS.get(args.category, [])}
-        if not categories[args.category]:
+        # Explicit category: run exactly what was asked.
+        registry = {**SMOKE_TESTS, **EXTERNAL_SMOKE_TESTS}
+        if args.category not in registry:
             print(f"Unknown category: {args.category}")
-            print(f"Available: {', '.join(SMOKE_TESTS.keys())}")
+            print(f"Available: {', '.join(all_categories)}")
             sys.exit(1)
+        if args.category in EXTERNAL_SMOKE_TESTS and not has_project:
+            print(f"\n=== Smoke: {args.category} ===")
+            print(
+                "  [SKIP] needs a real C project; pass --project <dir> "
+                "or set STOLON_SMOKE_PROJECT"
+            )
+            print("\nNothing to run.")
+            sys.exit(0)
+        categories = {args.category: registry[args.category]}
     else:
-        categories = SMOKE_TESTS
+        # Full run: baseline categories always; external categories only when
+        # a project is configured, so the default run has no permanent skip.
+        categories = dict(SMOKE_TESTS)
+        if has_project:
+            categories.update(EXTERNAL_SMOKE_TESTS)
 
     total_passed = 0
     total_failed = 0
@@ -475,9 +504,7 @@ def main():
     for cat_name, tests in categories.items():
         print(f"\n=== Smoke: {cat_name} ===")
         for test_fn in tests:
-            if test_fn == smoke_build_sanitizer:
-                r = test_fn(args.project)
-            elif test_fn == smoke_init_build_chain:
+            if test_fn in (smoke_build_sanitizer, smoke_init_build_chain):
                 r = test_fn(args.project)
             else:
                 r = test_fn()
@@ -489,7 +516,8 @@ def main():
     print(f"\n===============================")
     print(f"  PASSED:  {total_passed}")
     print(f"  FAILED:  {total_failed}")
-    print(f"  SKIPPED: {total_skipped}")
+    if total_skipped:
+        print(f"  SKIPPED: {total_skipped}")
     print(f"===============================")
 
     sys.exit(1 if total_failed > 0 else 0)

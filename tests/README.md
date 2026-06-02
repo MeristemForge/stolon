@@ -93,9 +93,12 @@ python tests/lint_c.py --project path/to/c-project --exclude minicoro,llhttp
 python tests/run_smoke.py build --project path/to/c-project
 #   or: set STOLON_SMOKE_PROJECT=path/to/c-project
 
-# Run smoke tests (requires real project)
+# Run smoke tests (baseline categories: init, commit, lint -- no project needed)
 python tests/run_smoke.py
 python tests/run_smoke.py init
+
+# The 'build' category needs a real project; the default run includes it only
+# when --project or STOLON_SMOKE_PROJECT is set, so the default run stays clean.
 
 # Run integration tests (cross-skill)
 python tests/run_integration.py
