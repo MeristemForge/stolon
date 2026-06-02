@@ -249,9 +249,9 @@ The rules in 7.3/7.4 apply to library source code. Examples and tests use simpli
 **Examples** -- single-file programs with one clear topic. No module prefix needed:
 
 ```c
-static void _on_connect(xylem_tcp_conn_t* conn) { ... }
-static void _on_read(xylem_tcp_conn_t* conn, void* data, size_t len) { ... }
-static void _on_close(xylem_tcp_conn_t* conn, int err, const char* errmsg) { ... }
+static void _on_connect(<project>_tcp_conn_t* conn) { ... }
+static void _on_read(<project>_tcp_conn_t* conn, void* data, size_t len) { ... }
+static void _on_close(<project>_tcp_conn_t* conn, int err, const char* errmsg) { ... }
 ```
 
 Pattern: `_on_<event>` for callbacks, `_<action>` for helpers.

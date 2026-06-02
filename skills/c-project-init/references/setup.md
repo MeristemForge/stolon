@@ -110,7 +110,7 @@ No `include/` directory. No `examples/` directory. Has `src/main.c`.
 
 ### LICENSE
 
-MIT license. The `====` fences are part of the format (matches Xylem convention).
+MIT license. The `====` fences are part of the format.
 
 ```
 MIT License

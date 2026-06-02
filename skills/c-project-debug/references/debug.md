@@ -282,7 +282,7 @@ gdb -batch -ex "bt full" out/Debug/test-{module} core
 #### Common hang causes in event-loop code
 
 - Safety timer not set (test runs forever waiting for callback that never fires)
-- `xylem_loop_stop` never called (missing callback, wrong condition)
+- `<project>_loop_stop` never called (missing callback, wrong condition)
 - Deadlock in thread pool or waitgroup
 - Socket not closed (event loop keeps running)
 

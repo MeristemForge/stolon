@@ -39,7 +39,7 @@ stolon/
 │       ├── c-project-build/    # 14 prompts, 53 checks
 │       ├── c-project-debug/    # 12 prompts, 53 checks
 │       ├── c-project-commit/   # 8 prompts, 46 checks
-│       ├── c-project-style/    # 13 prompts, 40 checks
+│       ├── c-project-style/    # 17 prompts, 61 checks
 │       └── integration/        # 8 prompts, 23 checks
 ├── .gitignore
 └── LICENSE
@@ -57,13 +57,14 @@ stolon/
 
 ## Architecture
 
-Each SKILL.md is a thin gate — three sections only:
+Each SKILL.md is a thin gate — four sections:
 
 1. **description** (YAML frontmatter) — CSO trigger keywords for skill discovery
 2. **When NOT to Use** — cross-references to sibling skills for routing
 3. **STOP** — forces the agent to locate and `readFile` the heavy reference (`references/*.md`) before any action
+4. **Mandatory Verification** — a checklist the agent must pass before reporting the task done (post-generation, post-build, post-edit, pre-commit, etc.)
 
-All domain knowledge lives in the reference files, not in SKILL.md. This keeps SKILL.md under 200 tokens while the references can be 600+ lines.
+All domain knowledge lives in the reference files, not in SKILL.md. SKILL.md stays lean — gate plus verification checklist — while the references can be 600+ lines.
 
 ## Usage
 
