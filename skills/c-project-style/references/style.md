@@ -562,12 +562,12 @@ When an object may still be referenced in the current callback chain, defer its 
 
 In project code, only log errors, and only where a log is genuinely necessary. Use `<project>_loge` (error). Do NOT add `logd`/`logi`/`logw` calls on your own initiative — only add them if the user explicitly asks. (Temporary debug logging while you are debugging is fine, but remove it before the code is final.)
 
-Every log message must start with the current module's identifier, stay short and factual, and use format-string style with key values rather than full sentences:
+Every log message must start with the current module's identifier wrapped in angle brackets, stay short and factual, and use format-string style with key values rather than full sentences. The angle-bracket tag keeps the module visually separate from the `key=value` pairs and the `file:line` prefix:
 
 ```c
 /* Correct */
-<project>_loge("tcp: send failed fd=%d err=%d", fd, err);
-<project>_loge("udp: bind failed port=%d err=%d", port, err);
+<project>_loge("<tcp> send failed fd=%d err=%d", fd, err);
+<project>_loge("<udp> bind failed port=%d err=%d", port, err);
 
 /* Wrong -- no module tag, verbose, sentence-style */
 <project>_loge("The send operation has failed on fd %d with error %d.", fd, err);
