@@ -20,7 +20,7 @@ URL ("http://") and banned names inside comments are NOT false positives.
 Usage:
     python lint_c.py <path> [<path> ...]   # lint files or directories
     python lint_c.py --project <dir>       # lint all .c/.h under a project
-    python lint_c.py --project <dir> --exclude llhttp,foo   # extra excludes
+    python lint_c.py --project <dir> --exclude libfoo,libbar   # extra excludes
 
 Third-party / bundled code is skipped by default (style.md S23 exempts it):
 any path segment in DEFAULT_EXCLUDES is ignored. Add more with --exclude.
@@ -33,24 +33,24 @@ import sys
 from pathlib import Path
 
 # --- third-party / generated dirs skipped by default (style.md S23) -------
-# Bundled libraries live in their own subdirectory and keep upstream style.
+# Only GENERIC vendoring directory names are excluded by default, so the
+# linter is not tied to any one project's set of bundled libraries. For a
+# project whose third-party code lives under a differently-named directory
+# (e.g. a specific library folder), pass it with --exclude name1,name2.
 DEFAULT_EXCLUDES = {
     "third_party",
     "third-party",
     "thirdparty",
     "vendor",
+    "vendored",
     "external",
+    "extern",
     "deps",
+    "_deps",
+    "subprojects",
     "build",
     "out",
     ".git",
-    # Known bundled libs seen in target projects.
-    "minicoro",
-    "llhttp",
-    "tiny-AES-c",
-    "tiny-aes-c",
-    "tomlc99",
-    "wepoll",
 }
 
 # --- banned functions (style.md S18) -------------------------------------

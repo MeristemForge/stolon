@@ -100,7 +100,7 @@ def check_has_license_mit(d: Path) -> bool:
 
 @directory_check
 def check_has_license_fences(d: Path) -> bool:
-    """LICENSE file uses ==== fences (Xylem convention)."""
+    """LICENSE uses ==== fences (the scaffold format defined in setup.md)."""
     lic = d / "LICENSE"
     if not lic.exists():
         return False

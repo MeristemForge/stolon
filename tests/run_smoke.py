@@ -12,7 +12,11 @@ real project. Each smoke test:
 Usage:
     python run_smoke.py                    # run all smoke tests
     python run_smoke.py init               # run one category
-    python run_smoke.py --project /path    # use existing project
+    python run_smoke.py --project /path    # use an existing C project
+
+Project-agnostic: smoke tests that need a real external project read it from
+--project or the STOLON_SMOKE_PROJECT environment variable, and skip when
+neither is set. No project name or path is hardcoded.
 """
 
 import argparse
@@ -25,7 +29,6 @@ import tempfile
 from pathlib import Path
 
 TESTS_DIR = Path(__file__).parent
-REPO_ROOT = TESTS_DIR.parent
 
 
 class SmokeResult:
@@ -33,6 +36,7 @@ class SmokeResult:
         self.name = name
         self.passed: list[str] = []
         self.failed: list[str] = []
+        self.skipped: list[str] = []
 
     def check(self, name: str, condition: bool, detail: str = ""):
         if condition:
@@ -44,6 +48,14 @@ class SmokeResult:
             if detail:
                 msg += f" ({detail})"
             print(msg)
+
+    def skip(self, name: str, detail: str = ""):
+        """Record a non-fatal skip (e.g. optional external project absent)."""
+        self.skipped.append(name)
+        msg = f"    [SKIP] {name}"
+        if detail:
+            msg += f" ({detail})"
+        print(msg)
 
 
 def run_cmd(cmd: list[str], cwd: Path, timeout: int = 120) -> subprocess.CompletedProcess:
@@ -72,6 +84,44 @@ def find_cmake() -> str | None:
 def find_ninja() -> str | None:
     """Find ninja executable."""
     return shutil.which("ninja")
+
+
+def detect_option_prefix(project: Path) -> str:
+    """Derive the CMake option prefix from project(<name>) in CMakeLists.txt.
+
+    The scaffold names options <PROJECT>_ENABLE_TESTING etc., where <PROJECT>
+    is the uppercased project() name. Falling back to no prefix keeps the
+    smoke test project-agnostic instead of hardcoding any single project.
+    """
+    cm = project / "CMakeLists.txt"
+    if not cm.exists():
+        return ""
+    text = cm.read_text(encoding="utf-8", errors="ignore")
+    m = re.search(r"project\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)", text)
+    if not m:
+        return ""
+    return m.group(1).upper()
+
+
+def find_external_project(explicit: Path | None) -> Path | None:
+    """Locate a real C project to smoke-test against, project-agnostic.
+
+    Resolution order:
+      1. --project argument
+      2. STOLON_SMOKE_PROJECT environment variable
+    Returns None (test skips) when neither points at a CMake project. No
+    project name or path is hardcoded, so stolon stays usable for any project.
+    """
+    candidates = []
+    if explicit:
+        candidates.append(explicit)
+    env = os.environ.get("STOLON_SMOKE_PROJECT")
+    if env:
+        candidates.append(Path(env))
+    for c in candidates:
+        if c and (c / "CMakeLists.txt").exists():
+            return c
+    return None
 
 
 # ============================================================
@@ -111,10 +161,15 @@ def smoke_init_build_chain(project_dir: Path | None = None) -> SmokeResult:
         if not cmake or not ninja:
             return result
 
+        # Derive the option prefix from the scaffold's project() name so this
+        # works for any project, not just one hardcoded name.
+        prefix = detect_option_prefix(tmp_project)
+        testing_opt = f"-D{prefix}_ENABLE_TESTING=ON" if prefix else "-DENABLE_TESTING=ON"
+
         # Configure
         configure_cmd = [
             cmake, "-B", "out", "-G", "Ninja Multi-Config",
-            "-DNETKIT_ENABLE_TESTING=ON",
+            testing_opt,
         ]
         r = run_cmd(configure_cmd, tmp_project)
         result.check(
@@ -166,27 +221,20 @@ def smoke_init_build_chain(project_dir: Path | None = None) -> SmokeResult:
 def smoke_build_sanitizer(project_dir: Path | None = None) -> SmokeResult:
     """Verify that the ASAN build workflow from build skill actually works.
 
-    Uses the Xylem project if available, otherwise skips.
+    Runs against a real external project supplied via --project or the
+    STOLON_SMOKE_PROJECT environment variable. Skips (does not fail) when no
+    project is supplied, so stolon is not tied to any specific project.
     """
     result = SmokeResult("build_sanitizer_workflow")
     print(f"\n  --- {result.name} ---")
 
-    if project_dir and (project_dir / "CMakeLists.txt").exists():
-        target = project_dir
-    else:
-        # Try to find Xylem project
-        candidates = [
-            REPO_ROOT.parent / "Xylem",
-            Path.home() / "Desktop" / "workspace" / "Xylem",
-        ]
-        target = None
-        for c in candidates:
-            if (c / "CMakeLists.txt").exists():
-                target = c
-                break
+    target = find_external_project(project_dir)
 
     if not target:
-        result.check("project_found", False, "No buildable project found")
+        result.skip(
+            "build_sanitizer_workflow",
+            "no project; pass --project or set STOLON_SMOKE_PROJECT",
+        )
         return result
 
     result.check("project_found", True)
@@ -196,7 +244,8 @@ def smoke_build_sanitizer(project_dir: Path | None = None) -> SmokeResult:
         result.check("cmake_available", False)
         return result
 
-    # Verify CMakeLists.txt has ASAN option
+    # Verify CMakeLists.txt exposes sanitizer/testing options. Options are
+    # prefixed by the project name, so match on the suffix to stay generic.
     cm_text = (target / "CMakeLists.txt").read_text(encoding="utf-8")
     result.check("has_asan_option", "ENABLE_ASAN" in cm_text)
     result.check("has_testing_option", "ENABLE_TESTING" in cm_text)
@@ -401,7 +450,12 @@ SMOKE_TESTS = {
 def main():
     parser = argparse.ArgumentParser(description="Live smoke tests for stolon skills")
     parser.add_argument("category", nargs="?", help="Test category (init/build/commit)")
-    parser.add_argument("--project", type=Path, help="Path to a real C project for build tests")
+    parser.add_argument(
+        "--project",
+        type=Path,
+        help="Path to a real C project for build/sanitizer smoke tests "
+             "(or set STOLON_SMOKE_PROJECT). Skipped when not provided.",
+    )
     args = parser.parse_args()
 
     if args.category:
@@ -415,6 +469,7 @@ def main():
 
     total_passed = 0
     total_failed = 0
+    total_skipped = 0
     results: list[SmokeResult] = []
 
     for cat_name, tests in categories.items():
@@ -429,10 +484,12 @@ def main():
             results.append(r)
             total_passed += len(r.passed)
             total_failed += len(r.failed)
+            total_skipped += len(r.skipped)
 
     print(f"\n===============================")
     print(f"  PASSED:  {total_passed}")
     print(f"  FAILED:  {total_failed}")
+    print(f"  SKIPPED: {total_skipped}")
     print(f"===============================")
 
     sys.exit(1 if total_failed > 0 else 0)

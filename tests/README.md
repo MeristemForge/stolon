@@ -86,6 +86,12 @@ python tests/run_coverage.py c-project-style
 # Deterministic C linter on real source files
 python tests/lint_c.py --project path/to/c-project
 python tests/lint_c.py src/foo.c include/foo.h
+# bundled third-party libs in non-standard folders: exclude by name
+python tests/lint_c.py --project path/to/c-project --exclude minicoro,llhttp
+
+# Build/sanitizer smoke against your OWN project (project-agnostic)
+python tests/run_smoke.py build --project path/to/c-project
+#   or: set STOLON_SMOKE_PROJECT=path/to/c-project
 
 # Run smoke tests (requires real project)
 python tests/run_smoke.py
